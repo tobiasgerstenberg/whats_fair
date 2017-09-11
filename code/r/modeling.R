@@ -24,6 +24,7 @@ library(lme4)
 library(stringr)
 library(Hmisc)
 library(knitr)
+library(broom)
 library(tidyverse)
 rm(list = ls())
 
@@ -53,76 +54,33 @@ df.long = df.long %>%
 #+ Run different models on individual participants  -------------------------------------------
 #' ## Run different models on individual participants  
 
-f_regression = function(data,formula){
-  fit = lm(formula,data = data)
-  fits = summary(fit)
-  
-  return(list(r = fits$r.squared^(1/2),
-              sigma = fits$sigma,
-              values = fit$fitted.values,
-              fit = fit))
-}
-
-list.modelfit = list()
-
 # set of models 
 model.names = c("null_model","matching","counterfactual","structural","outcome","individual","outcome_matching")
 model.formulas = c("rating~1",paste0("rating~",str_replace_all(model.names[-1],"_","+")))
 
-parameter.names = c("r","sigma","fit","values","BIC")
-
-for (i in model.names){
-  for (j in parameter.names){
-    list.modelfit[[i]][[j]] = list()
-  }
-}
-
-for (i in unique(df.long$participant)){
-  for (j in 1:length(model.names)){
-    tmp = f_regression(df.long %>% filter(participant == i),formula(model.formulas[j]))
-    list.modelfit[[model.names[j]]][["r"]][i] = tmp$r
-    list.modelfit[[model.names[j]]][["sigma"]][i] = tmp$sigma
-    list.modelfit[[model.names[j]]][["fit"]][[i]] = tmp$fit
-    list.modelfit[[model.names[j]]][["BIC"]][[i]] = BIC(tmp$fit)
-  }
-}
-
-# compare BIC scores 
-df.bic = data.frame(matrix(NA, ncol= length(model.names)+1, nrow = length(unique(df.long$participant)))) %>% 
-  setNames(c("participant",model.names)) %>% 
-  mutate(participant = unique(df.long$participant))
-
-for (i in 1:length(model.names)){
-  df.bic[[model.names[i]]] = list.modelfit[[model.names[i]]][["BIC"]] %>% unlist()
-}
-
-# check for negative coefficients and then replace corresponding values with Inf 
-for(i in model.names){
-  for (j in 1:nrow(df.bic)){
-    if(any(list.modelfit[[i]][["fit"]][[j]]$coefficients[-1] < 0,na.rm=T)){
-      df.bic[[i]][j]  = Inf
-    }
-  }
-}
-
-# assign best-fitting model to each participant (using BIC as criterion) 
-tmp = df.bic %>% 
-  gather(model,bic,-participant) %>% 
+df.bic = df.long %>% 
   group_by(participant) %>% 
-  filter(bic == min(bic)) %>% 
-  filter(row_number() == 1) %>%
-  arrange(participant,model) %>% 
+  do(null_model = lm(formula = paste0(model.formulas[1]),data=.),
+     matching = lm(formula = paste0(model.formulas[2]),data=.),
+     counterfactual = lm(formula = paste0(model.formulas[3]),data=.),
+     structural = lm(formula = paste0(model.formulas[4]),data=.),
+     outcome = lm(formula = paste0(model.formulas[5]),data=.),
+     individual = lm(formula = paste0(model.formulas[6]),data=.),
+     outcome_matching = lm(formula = paste0(model.formulas[7]),data=.)) %>% 
+  mutate_at(vars(-participant),funs(ifelse(any(.$coefficients<0),NA,list(.)))) %>% # check for negative coefficients
+  mutate_at(vars(-participant), funs(ifelse(. %>% is.na %>% any,Inf,. %>% BIC))) %>%  # calculate BIC scores, Inf for negative coefficients 
+  mutate(model = which.min(c(null_model,matching,counterfactual,structural,outcome,individual,outcome_matching)),
+         model = names(.)[model+1]) %>% # assign each participant to best-fitting model 
   ungroup
-
-df.long = df.long %>% 
-  left_join(tmp, by = "participant")
-
+  
 # re-assign participants in the additive condition who were assigned to the counterfactual, or structural model 
-# to the outcome model 
+# to the outcome model (see paper for justification) 
 df.long = df.long %>% 
+  select(experiment:rating) %>% 
+  left_join(df.bic %>% select(participant,model),by = 'participant') %>% 
   mutate(model = ifelse(condition == 'additive' & model %in% c("counterfactual","structural"),"outcome",model))
 
-rm(list = setdiff(ls(),c("df.long","df.model","df.bic","list.modelfit")))
+rm(list = setdiff(ls(),c("df.long","df.model","df.bic")))
 
 #+ PLOTS ---------------------------------------------------------------------------------
 #' # PLOTS
@@ -311,7 +269,6 @@ df.plot = df.long %>%
 
 df.text = data.frame(x = c(2,5,8), y = rep(12,3), label = c('Negative outcomes', 'Mixed outcomes', 'Positive outcomes'),condition=NA,model=rep(c('Performance','Counterfactual'),each=3))
 
-
 df.groupsize = df.long %>% 
   filter(experiment == 'unconstrained', trial == 'cc') %>% 
   count(model) %>%
@@ -357,25 +314,24 @@ ggplot(df.plot,aes(x=trial,y=mean,group=condition,color=condition))+
 #+ Table: Model results (individual participants) ---------------------------------------------------------------------
 #' ## Table: Model results (individual participants) 
 
-df.bic %>% 
-  left_join(df.long %>% 
-              filter(trial == 'cc') %>% 
-              select(experiment,participant,condition,model,age),
-            by = "participant") %>% 
-  filter(experiment == "unconstrained") %>% 
+df.long %>% 
+  filter(experiment == 'unconstrained') %>% 
+  select(participant,experiment,condition,age,model) %>% 
+  group_by(participant) %>% 
+  filter(row_number()==1) %>% 
+  ungroup() %>% 
+  left_join(df.bic %>% select(-model), by = 'participant') %>% 
   mutate(model = factor(model, levels = c('matching','counterfactual','structural','outcome','outcome_matching','individual','null_model'),labels = c('Performance','Counterfactual','Structural','Outcome','Hybrid','Individual','Null')),
          age = factor(age,labels = c('4-5 years', '6-7 years', 'Adults'))) %>% 
   mutate_at(vars('matching','counterfactual','structural','outcome','outcome_matching','individual','null_model'),funs(round(.,2))) %>%
   mutate_at(vars('matching','counterfactual','structural','outcome','outcome_matching','individual','null_model'),funs(ifelse(.<0,0,.))) %>%
   arrange(age,condition,model) %>% 
   mutate(participant = 1:nrow(.)) %>%
-  select(participant,age,condition,everything()) %>% 
-  select(-c(experiment)) %>% 
+  select(participant,age,condition,null_model,matching,counterfactual,structural,outcome,individual,outcome_matching,model) %>%
   head() %>% 
   kable() 
   
-
-#+ Table: Model results (condition and age groups), results='asis' -------------------------------------------
+#+ Table: Model results (condition and age groups) -------------------------------------------
 #' ## Table: Model results (condition and age groups) 
 
 df.long %>% 
