@@ -24,7 +24,6 @@ library(lme4)
 library(stringr)
 library(Hmisc)
 library(knitr)
-library(broom)
 library(tidyverse)
 rm(list = ls())
 
