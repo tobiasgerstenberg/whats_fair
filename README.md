@@ -23,7 +23,7 @@ Repository with data, materials, figures, and analysis scripts.
 
 - `cluster_judgments.pdf`: Judgments separated by participant clusters whose answers were best explained by the different candidate models. 
 - `defiant_responses.pdf`: Judgments going counter to the outcome in Experiment 2 (e.g. reducing sweets for positive outcomes, or increasing sweets for negative outcomes). 
-- `means_constrained.pdf: Mean judgments in Experiment 1. 
+- `means_constrained.pdf`: Mean judgments in Experiment 1. 
 - `means_unconstrained.pdf`: Mean judgments in Experiment 2. 
 - `model_predictions.pdf`: Predictions of the different models. 
 
