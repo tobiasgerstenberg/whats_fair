@@ -228,9 +228,6 @@ ggplot(df.plot,aes(x=trial,y=rating,group=condition,color=condition,linetype=con
   geom_line(size=1,position = position_dodge(0.4))+
   geom_point(size=2,position = position_dodge(0.4))+
   facet_wrap(~model,ncol=2)+
-  # labs(y = expression(atop(paste(bold("Predicted reward "), "to target player"), paste("(-10 = none, 10 = all)"))),
-  #      x = "Pattern of throws: target player, other player",
-  #      title = "Model predictions")+
   labs(y = "Predicted reward to target player\n(-10 = none, 10 = full)",
        x = "Pattern of throws: target player, other player",
        title = "Model predictions")+
