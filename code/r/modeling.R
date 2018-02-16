@@ -1,7 +1,7 @@
 #' ---
 #' title: What's fair - Model fits and plots
 #' author: Tobias Gerstenberg
-#' date: September 10, 2017
+#' date: February 16, 2018
 #' output:
 #'    html_document:
 #'      toc: true
@@ -48,14 +48,16 @@ df.long = read.csv("../../data/data_aggregate.csv")
 df.model = read.csv("model_prediction.csv")
 
 df.long = df.long %>% 
-  left_join(df.model,by = c("condition","trial"))
+  left_join(df.model,by = c("condition","trial")) %>% 
+  mutate(task = ifelse(condition %in% c('additive','conjunctive'),'team','individual'),
+         task = as.numeric(as.factor(task))-1)
 
 #+ Run different models on individual participants  -------------------------------------------
 #' ## Run different models on individual participants  
 
 # set of models 
 model.names = c("null_model","matching","counterfactual","structural","outcome","individual","outcome_matching")
-model.formulas = c("rating~1",paste0("rating~",str_replace_all(model.names[-1],"_","+")))
+model.formulas = c("rating~1",paste0("rating~",str_replace_all(model.names[-c(1,8)],"_","+")))
 
 df.bic = df.long %>% 
   group_by(participant) %>% 
@@ -79,14 +81,15 @@ df.long = df.long %>%
   left_join(df.bic %>% select(participant,model),by = 'participant') %>% 
   mutate(model = ifelse(condition == 'additive' & model %in% c("counterfactual","structural"),"outcome",model))
 
-rm(list = setdiff(ls(),c("df.long","df.model","df.bic")))
+df.long %>% group_by(participant) %>% filter(row_number() == 1) %>% ungroup() %>% count(model)
+
+# rm(list = setdiff(ls(),c("df.long","df.model","df.bic")))
 
 #+ PLOTS ---------------------------------------------------------------------------------
 #' # PLOTS
 #+ Plot: Results - Experiment 1 ----------------------------------------------------------
 #' ## Plot: Results - Experiment 1 
 experiment.name = "constrained"
-# experiment.name = "unconstrained"
 
 trial.labels = c('oo','om','mo','oc','mm','co','mc','cm','cc')
 
@@ -105,14 +108,10 @@ ggplot(df.plot,aes(x=trial,y=rating))+
   geom_vline(xintercept = 3.5,linetype = 2)+
   geom_vline(xintercept = 6.5,linetype = 2)+
   geom_text(data=df.text,aes(x = x, y = y,label = label),color = 'gray40',size=5)+
-  stat_summary(fun.y = mean, geom = 'line', size = 1, aes(group=condition,color=condition,linetype=condition))+
-  stat_summary(data = df.plot %>% filter(condition == 'additive'), color = 'indianred3', fun.data = mean_cl_boot, geom = "errorbar",width=0,show.legend = F)+
-  stat_summary(data = df.plot %>% filter(condition == 'additive'), color = 'indianred3', fun.y = mean, geom = 'point', size = 2)+
-  stat_summary(data = df.plot %>% filter(condition == 'conjunctive'), color = 'green3', fun.data = mean_cl_boot, geom = "errorbar",width=0,show.legend = F)+
-  stat_summary(data = df.plot %>% filter(condition == 'conjunctive'), color = 'green3', fun.y = mean, geom = 'point', size = 2)+
-  stat_summary(data = df.plot %>% filter(condition == 'disjunctive'), color = 'royalblue3', fun.data = mean_cl_boot, geom = "errorbar",width=0,show.legend = F)+
-  stat_summary(data = df.plot %>% filter(condition == 'disjunctive'), color = 'royalblue3', fun.y = mean, geom = 'point', size = 2)+
-  labs(y = "Mean reward assigned to target player\n(-10 = none, 10 = all)",
+  stat_summary(fun.y = mean, geom = 'line', size = 1, aes(group=condition,color=condition,linetype=condition),position = position_dodge(0.4))+
+  stat_summary(fun.data = mean_cl_boot, geom = 'errorbar', aes(group=condition,color=condition),position = position_dodge(0.4),width=0)+
+  stat_summary(fun.y = mean, geom = 'point', aes(group=condition,color=condition),position = position_dodge(0.4),size=2)+
+  labs(y = "Mean reward assigned to target player\n(-10 = none, 10 = full)",
        x = "Pattern of throws: target player, other player")+
   coord_cartesian(xlim = c(0.5, 9.5), ylim = c(-10,14),expand=F)+
   facet_wrap(~age,ncol=1)+
@@ -125,11 +124,10 @@ ggplot(df.plot,aes(x=trial,y=rating))+
         legend.key.width = unit(1.6,"cm")
   )
 
-# ggsave(paste0("../../figures/means_",experiment.name,".pdf"),width=8,height=8)
+# ggsave(paste0("../../figures/figure2.pdf"),width=8,height=8)
 
 #+ Plot: Results - Experiment 2 ----------------------------------------------------------
 #' ## Plot: Results - Experiment 2 
-# experiment.name = "constrained"
 experiment.name = "unconstrained"
 
 trial.labels = c('oo','om','mo','oc','mm','co','mc','cm','cc')
@@ -149,14 +147,10 @@ ggplot(df.plot,aes(x=trial,y=rating))+
   geom_vline(xintercept = 3.5,linetype = 2)+
   geom_vline(xintercept = 6.5,linetype = 2)+
   geom_text(data=df.text,aes(x = x, y = y,label = label),color = 'gray40',size=5)+
-  stat_summary(fun.y = mean, geom = 'line', size = 1, aes(group=condition,color=condition,linetype=condition))+
-  stat_summary(data = df.plot %>% filter(condition == 'additive'), color = 'indianred3', fun.data = mean_cl_boot, geom = "errorbar",width=0,show.legend = F)+
-  stat_summary(data = df.plot %>% filter(condition == 'additive'), color = 'indianred3', fun.y = mean, geom = 'point', size = 2)+
-  stat_summary(data = df.plot %>% filter(condition == 'conjunctive'), color = 'green3', fun.data = mean_cl_boot, geom = "errorbar",width=0,show.legend = F)+
-  stat_summary(data = df.plot %>% filter(condition == 'conjunctive'), color = 'green3', fun.y = mean, geom = 'point', size = 2)+
-  stat_summary(data = df.plot %>% filter(condition == 'disjunctive'), color = 'royalblue3', fun.data = mean_cl_boot, geom = "errorbar",width=0,show.legend = F)+
-  stat_summary(data = df.plot %>% filter(condition == 'disjunctive'), color = 'royalblue3', fun.y = mean, geom = 'point', size = 2)+
-  labs(y = "Mean reward assigned to target player\n(-10 = none, 10 = all)",
+  stat_summary(fun.y = mean, geom = 'line', size = 1, aes(group=condition,color=condition,linetype=condition),position = position_dodge(0.4))+
+  stat_summary(fun.data = mean_cl_boot, geom = 'errorbar', aes(group=condition,color=condition),position = position_dodge(0.4),width=0)+
+  stat_summary(fun.y = mean, geom = 'point', aes(group=condition,color=condition),position = position_dodge(0.4),size=2)+
+  labs(y = "Mean reward assigned to target player\n(-10 = none, 10 = full)",
        x = "Pattern of throws: target player, other player")+
   coord_cartesian(xlim = c(0.5, 9.5), ylim = c(-10,14),expand=F)+
   facet_wrap(~age,ncol=1)+
@@ -169,7 +163,7 @@ ggplot(df.plot,aes(x=trial,y=rating))+
         legend.key.width = unit(1.6,"cm")
   )
 
-# ggsave(paste0("../../figures/means_",experiment.name,".pdf"),width=8,height=8)
+# ggsave(paste0("../../figures/figure3.pdf"),width=8,height=8)
 
 #+ Plot: Defiant responses -----------------------------------------------------------------------
 #' ## Plot: Defiant responses 
@@ -210,7 +204,7 @@ ggplot(df.plot,aes(x = trial, y = percentage,group = condition, color = conditio
         legend.key.width = unit(1.6,"cm")
   )
 
-# ggsave(paste0("../../figures/defiant_responses.pdf"),width=8,height=6)
+# ggsave(paste0("../../figures/figure4.pdf"),width=8,height=6)
 
 #+ Plot: Model predictions ----------------------------------------------------------------------
 #' ## Plot: Model predictions 
@@ -231,10 +225,13 @@ ggplot(df.plot,aes(x=trial,y=rating,group=condition,color=condition,linetype=con
   geom_vline(xintercept = 3.5,linetype = 2)+
   geom_vline(xintercept = 6.5,linetype = 2)+
   geom_text(data=df.text,aes(x = x, y = y,label = label),color = 'gray40',size=5)+
-  geom_line(size=1)+
-  geom_point(size=2)+
+  geom_line(size=1,position = position_dodge(0.4))+
+  geom_point(size=2,position = position_dodge(0.4))+
   facet_wrap(~model,ncol=2)+
-  labs(y = expression(atop(paste(bold("Predicted reward "), "to target player"), paste("(-10 = none, 10 = all)"))),
+  # labs(y = expression(atop(paste(bold("Predicted reward "), "to target player"), paste("(-10 = none, 10 = all)"))),
+  #      x = "Pattern of throws: target player, other player",
+  #      title = "Model predictions")+
+  labs(y = "Predicted reward to target player\n(-10 = none, 10 = full)",
        x = "Pattern of throws: target player, other player",
        title = "Model predictions")+
   coord_cartesian(xlim = c(0.5, 9.5), ylim = c(-11,14),expand=F)+
@@ -242,12 +239,12 @@ ggplot(df.plot,aes(x=trial,y=rating,group=condition,color=condition,linetype=con
   scale_linetype_manual(values = c('solid','longdash','dotdash'))+
   theme(axis.title.x = element_text(margin = margin(t = 15, r = 0, b = 0, l = 0, unit = "pt")),
         plot.title = element_text(hjust = 0.5,face='bold'),
-        legend.position = c(0.01,0.49),
+        legend.position = c(0.001,0.48),
         legend.justification = c(0,0),
         legend.key.width = unit(1.6,"cm")
   )
 
-# ggsave(paste0("../../figures/model_predictions.pdf"),width=12,height=8)
+# ggsave(paste0("../../figures/figure5.pdf"),width=12,height=8)
 
 #+ Plot: Average ratings per participant cluster ----------------------------------------------------------------------
 #' ## Plot: Average ratings per participant cluster 
@@ -287,11 +284,11 @@ ggplot(df.plot,aes(x=trial,y=mean,group=condition,color=condition))+
   geom_vline(xintercept = 6.5,linetype = 2)+
   geom_text(data=df.text,aes(x = x, y = y,label = label),color = 'gray40',size=5)+
   geom_text(data=df.groupsize,aes(x = x, y = y,label = label),color = 'gray40',size=8)+
-  geom_linerange(aes(ymin = low, ymax = high),size=1)+
-  geom_line(size=1,aes(linetype=condition))+
-  geom_point(size=2)+
+  geom_linerange(aes(ymin = low, ymax = high),size=1,position = position_dodge(0.4))+
+  geom_line(size=1,aes(linetype=condition),position = position_dodge(0.4))+
+  geom_point(size=2,position = position_dodge(0.4))+
   facet_wrap(~model,ncol=2)+
-  labs(y = expression(atop(paste(bold("Mean assigned reward "), "to target player"), paste("(-10 = none, 10 = all)"))),
+  labs(y = "Mean assigned reward to target player\n(-10 = none, 10 = full)",
        x = "Pattern of throws: target player, other player",
        title = "Mean judgments per cluster")+
   coord_cartesian(xlim = c(0.5, 9.5), ylim = c(-11,14),expand=F)+
@@ -306,7 +303,7 @@ ggplot(df.plot,aes(x=trial,y=mean,group=condition,color=condition))+
         plot.title = element_text(hjust = 0.5,face='bold')
   )
 
-# ggsave(paste0("../../figures/cluster_judgments.pdf"),width=12,height=8)
+# ggsave(paste0("../../figures/figure6.pdf"),width=12,height=8)
 
 #+ TABLES ---------------------------------------------------------------------------------
 #' # TABLES
@@ -327,7 +324,7 @@ df.long %>%
   arrange(age,condition,model) %>% 
   mutate(participant = 1:nrow(.)) %>%
   select(participant,age,condition,null_model,matching,counterfactual,structural,outcome,individual,outcome_matching,model) %>%
-  head() %>% 
+  head() %>%
   kable() 
   
 #+ Table: Model results (condition and age groups) -------------------------------------------
