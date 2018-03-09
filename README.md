@@ -1,5 +1,5 @@
 # What's fair
-Repository with data, materials, figures, and analysis scripts. If you have any questions, please contact [tger@mit.edu](tger@mit.edu). 
+Repository with data, materials, figures, and analysis scripts for the paper "What's fair? How children assign reward to members of teams with differing causal structures" (Koskuba, Gerstenberg, Gordon, Lagnado, Schlottmann). If you have any questions, please contact [tger@mit.edu](tger@mit.edu). 
 
 ## Data 
 
@@ -22,7 +22,7 @@ Repository with data, materials, figures, and analysis scripts. If you have any 
 
 ### spss 
 
-- analysis files and output files 
+- Analysis files and output files. 
 
 ## Figures 
 
