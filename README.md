@@ -4,7 +4,7 @@ Repository with data, materials, figures, and analysis scripts. If you have any 
 ## Data 
 
 - `data_aggregate.csv`: Data in aggregate form for each participant. 
-- `data_raw.csv`: Raw data. 
+- `data_raw.csv`: Raw data (with legend). 
 
 ## Code 
 
